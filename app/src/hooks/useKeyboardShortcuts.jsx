@@ -5,7 +5,8 @@ export const useKeyboardShortcuts = ({
   onClearChat,
   onSendMessage,
   inputRef,
-  messages
+  messages,
+  onToggleSearch
 }) => {
   const { toggleTheme } = useTheme();
 
@@ -26,6 +27,12 @@ export const useKeyboardShortcuts = ({
       if ((e.ctrlKey || e.metaKey) && e.key === 't') {
         e.preventDefault();
         toggleTheme();
+      }
+
+      // Ctrl/Cmd + F: Toggle search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        onToggleSearch?.();
       }
 
       // Ctrl/Cmd + /: Focus input
@@ -52,13 +59,32 @@ export const useKeyboardShortcuts = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClearChat, onSendMessage, inputRef, toggleTheme]);
+  }, [onClearChat, onSendMessage, inputRef, toggleTheme, onToggleSearch]);
 
   // Help modal shortcuts
   const showHelp = () => {
     alert(`
-      Help:
-      Tidak ada informasi bantuan saat ini.
+      🎮 Keyboard Shortcuts:
+
+      📝 Chat Controls:
+      • Ctrl+Enter: Kirim pesan
+      • Ctrl+/: Fokus input pesan
+      • Esc: Unfocus input
+
+      🔍 Search & Navigation:
+      • Ctrl+F: Buka/tutup pencarian
+      • Enter (saat search): Hasil berikutnya
+      • ↑/↓ (saat search): Navigasi hasil
+
+      🎨 Interface:
+      • Ctrl+K: Hapus semua pesan
+      • Ctrl+T: Ganti tema (Light/Dark)
+      • Ctrl+H: Tampilkan bantuan ini
+
+      💡 Tips:
+      • Hover pesan untuk melihat aksi tambahan
+      • Klik kanan pesan untuk menu konteks
+      • Klik emoji untuk memberikan reaksi
     `);
   };
 

@@ -1,9 +1,15 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Mic, Paperclip } from "lucide-react";
+import { Send, Mic, Paperclip, Keyboard, Paperclip as AttachmentIcon } from "lucide-react";
+import VoiceRecorder from "./VoiceRecorder";
+import FileAttachment from "./FileAttachment";
 
 export default function ChatInput({ onSend, loading, inputRef: externalInputRef }) {
   const [input, setInput] = useState("");
   const [isComposing, setIsComposing] = useState(false);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(true);
+  const [showFileAttachment, setShowFileAttachment] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState([]);
   const internalInputRef = useRef(null);
   const textareaRef = externalInputRef || internalInputRef;
 
@@ -18,10 +24,19 @@ export default function ChatInput({ onSend, loading, inputRef: externalInputRef 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!input.trim() || loading || isComposing) return;
+    if ((!input.trim() && attachedFiles.length === 0) || loading || isComposing) return;
 
-    onSend(input);
+    onSend(input || "Shared files", {
+      files: attachedFiles.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        url: URL.createObjectURL(file)
+      }))
+    });
+
     setInput("");
+    setAttachedFiles([]);
 
     // Reset height
     if (textareaRef.current) {
@@ -47,15 +62,44 @@ export default function ChatInput({ onSend, loading, inputRef: externalInputRef 
   const characterCount = input.length;
   const maxCharacters = 2000;
 
+  const handleVoiceMessage = (voiceData) => {
+    if (onSend) {
+      onSend(voiceData.text, {
+        isVoice: true,
+        audioURL: voiceData.audioURL,
+        duration: voiceData.duration
+      });
+    }
+    setShowVoiceRecorder(false);
+    setShowTextInput(true);
+  };
+
+  const toggleVoiceRecorder = () => {
+    setShowVoiceRecorder(!showVoiceRecorder);
+    setShowTextInput(!showTextInput);
+  };
+
+  const toggleFileAttachment = () => {
+    setShowFileAttachment(!showFileAttachment);
+  };
+
+  const handleFileSelect = (files) => {
+    setAttachedFiles(files);
+  };
+
   return (
     <footer className="border-t border-gray-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/70 backdrop-blur-lg p-3 sm:p-4">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="flex items-end gap-1.5 sm:gap-2">
           <button
             type="button"
-            className="hidden sm:block p-3 rounded-xl bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"
-            title="Lampirkan file (segera)"
-            disabled
+            onClick={toggleFileAttachment}
+            className={`hidden sm:block p-3 rounded-xl transition-all ${
+              showFileAttachment
+                ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/70'
+                : 'bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'
+            }`}
+            title="Attach files"
           >
             <Paperclip className="w-5 h-5" />
           </button>
@@ -88,11 +132,15 @@ export default function ChatInput({ onSend, loading, inputRef: externalInputRef 
 
           <button
             type="button"
-            className="hidden sm:block p-3 rounded-xl bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"
-            title="Input suara (segera)"
-            disabled
+            onClick={toggleVoiceRecorder}
+            className={`hidden sm:block p-3 rounded-xl transition-all ${
+              showVoiceRecorder
+                ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/70'
+                : 'bg-gray-100 dark:bg-slate-700/50 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'
+            }`}
+            title={showVoiceRecorder ? "Switch to text input" : "Voice recording"}
           >
-            <Mic className="w-5 h-5" />
+            {showVoiceRecorder ? <Keyboard className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
           </button>
 
           <button
@@ -114,7 +162,64 @@ export default function ChatInput({ onSend, loading, inputRef: externalInputRef 
             <span>AI sedang berpikir...</span>
           </div>
         )}
+
+        {/* File Indicator */}
+        {attachedFiles.length > 0 && (
+          <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+            <AttachmentIcon className="w-4 h-4" />
+            <span>{attachedFiles.length} file{attachedFiles.length > 1 ? 's' : ''} attached</span>
+          </div>
+        )}
+
+        {/* Mobile Voice Button */}
+        {!showTextInput && (
+          <div className="sm:hidden flex justify-center">
+            <button
+              type="button"
+              onClick={toggleVoiceRecorder}
+              className={`p-4 rounded-full transition-all ${
+                showVoiceRecorder
+                  ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'
+                  : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
+              }`}
+              title={showVoiceRecorder ? "Switch to text input" : "Voice recording"}
+            >
+              {showVoiceRecorder ? <Keyboard className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+            </button>
+          </div>
+        )}
       </form>
+
+      {/* File Attachment (when shown) */}
+      {showFileAttachment && (
+        <div className="mt-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+          <FileAttachment
+            onFileSelect={handleFileSelect}
+            disabled={loading}
+            maxSize={10 * 1024 * 1024} // 10MB
+          />
+        </div>
+      )}
+
+      {/* Voice Recorder (when shown) */}
+      {showVoiceRecorder && (
+        <div className="mt-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+          <VoiceRecorder
+            onTranscript={(transcript) => {
+              // Auto-populate text input when transcript is available
+              setInput(transcript);
+              setShowVoiceRecorder(false);
+              setShowTextInput(true);
+              // Focus input
+              setTimeout(() => {
+                textareaRef.current?.focus();
+              }, 100);
+            }}
+            onSendVoice={handleVoiceMessage}
+            disabled={loading}
+          />
+        </div>
+      )}
     </footer>
   );
 }
